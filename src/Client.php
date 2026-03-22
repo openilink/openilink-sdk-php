@@ -31,6 +31,10 @@ final class Client
     private string $botType;
     private string $version;
     private string $routeTag;
+    /**
+     * @var null|callable(string, int): string
+     */
+    private $silkDecoder = null;
 
     /**
      * @var array<string, string>
@@ -45,6 +49,9 @@ final class Client
         $this->botType = (string) ($config['bot_type'] ?? Constants::DEFAULT_BOT_TYPE);
         $this->version = (string) ($config['version'] ?? '1.0.2');
         $this->routeTag = (string) ($config['route_tag'] ?? '');
+        if (isset($config['silk_decoder']) && is_callable($config['silk_decoder'])) {
+            $this->silkDecoder = $config['silk_decoder'];
+        }
     }
 
     public function getBaseUrl(): string
@@ -105,6 +112,14 @@ final class Client
     public function setRouteTag(string $routeTag): void
     {
         $this->routeTag = $routeTag;
+    }
+
+    /**
+     * @param callable(string, int): string $silkDecoder
+     */
+    public function setSilkDecoder(callable $silkDecoder): void
+    {
+        $this->silkDecoder = $silkDecoder;
     }
 
     public function getUpdates(string $getUpdatesBuf = '', ?int $timeoutMs = null): array
@@ -623,6 +638,24 @@ final class Client
         );
 
         return $response['body'];
+    }
+
+    public function downloadVoice(?array $media): string
+    {
+        if ($this->silkDecoder === null) {
+            throw new RuntimeException('ilink: no SILK decoder configured; use config["silk_decoder"] or setSilkDecoder()');
+        }
+
+        if ($media === null) {
+            throw new RuntimeException('ilink: voice media is nil');
+        }
+
+        $encryptedQueryParam = (string) ($media['encrypt_query_param'] ?? '');
+        $aesKey = (string) ($media['aes_key'] ?? '');
+        $silkData = $this->downloadFile($encryptedQueryParam, $aesKey);
+        $pcm = ($this->silkDecoder)($silkData, Voice::DEFAULT_SAMPLE_RATE);
+
+        return Voice::buildWav($pcm, Voice::DEFAULT_SAMPLE_RATE, 1, 16);
     }
 
     public function setContextToken(string $userId, string $token): void

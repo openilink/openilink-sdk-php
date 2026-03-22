@@ -11,6 +11,7 @@
 - 获取会话配置
 - 发送打字状态
 - CDN 上传下载与 AES-128-ECB 加解密
+- 语音消息解码（可插拔 SILK 解码器 + WAV 封装）
 - 获取上传 URL
 - 缓存 `context_token` 并主动推送文本
 - 结构化错误类型（`APIError`、`HTTPError`）
@@ -84,6 +85,9 @@ $client = new Client($token, [
     'bot_type' => '3',
     'version' => '1.0.2',
     'route_tag' => 'gray-a',
+    'silk_decoder' => static function (string $silkData, int $sampleRate): string {
+        return decodeSilkSomehow($silkData, $sampleRate);
+    },
 ]);
 ```
 
@@ -190,6 +194,22 @@ CDN 下载：
 ```php
 $raw = $client->downloadRaw($encryptedQueryParam);
 $plain = $client->downloadFile($encryptedQueryParam, $aesKeyBase64);
+```
+
+语音消息解码：
+
+```php
+use OpenILink\Client;
+use OpenILink\Voice;
+
+$client = new Client($token, [
+    'silk_decoder' => static function (string $silkData, int $sampleRate): string {
+        return decodeSilkSomehow($silkData, $sampleRate);
+    },
+]);
+
+$wav = $client->downloadVoice($message['item_list'][0]['voice_item']['media'] ?? null);
+$wrapped = Voice::buildWav($pcmBytes, 24000, 1, 16);
 ```
 
 错误处理：

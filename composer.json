@@ -1,6 +1,6 @@
 {
   "name": "openilink/openilink-sdk-php",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "PHP SDK for the OpenILink Bot API.",
   "type": "library",
   "license": "MIT",
